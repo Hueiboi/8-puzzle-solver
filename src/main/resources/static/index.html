@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>8-Puzzle A* AI Solver</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
+        .grid { display: grid; grid-template-columns: repeat(3, 100px); grid-gap: 10px; margin-top: 20px; }
+        .cell { width: 100px; height: 100px; background: #fff; border: 2px solid #333; display: flex; justify-content: center; align-items: center; font-size: 2em; font-weight: bold; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .empty { background: #cbd5e0; border: none; box-shadow: none; }
+        button { margin-top: 30px; padding: 12px 24px; font-size: 1.1em; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; transition: 0.3s; }
+        button:hover { background: #0056b3; }
+        #status { margin-top: 15px; font-weight: bold; color: #2d3748; }
+        label { font-size: 1.2em;  font-weight: bold; color: #2d3748; }
+        input { font-size: 1.2em;  font-weight: bold; color: green; }
+    </style>
+</head>
+<body>
+<h1>8-Puzzle AI Solver (A* algorithm)</h1>
+<div class="grid" id="board"></div>
+<div id="status">Trạng thái: Sẵn sàng</div>
+<div style="margin-bottom: 20px; margin-top: 20px;">
+    <label>Initial: </label>
+    <input type="text" id="inputInitial" value="1, 2, 3, 4, 0, 5, 7, 8, 6" style="width: 200px;">
+    <label>Goal: </label>
+    <input type="text" id="inputGoal" value="1, 2, 3, 4, 0, 5, 6, 7, 8" style="width: 200px;">
+</div>
+<button id="solveBtn" onclick="solvePuzzle()">Bắt đầu giải</button>
+<button id="resetBtn" onclick="ResetPuzzle()">Reset bảng</button>
+
+<script>
+    let currentBoard = [1, 2, 3, 4, 0, 5, 7, 8, 6];
+    let goal = [1, 2, 3, 4, 0, 5, 6, 7, 8];
+
+    function render(board) {
+        const container = document.getElementById('board');
+        container.innerHTML = '';
+        board.forEach(val => {
+            const div = document.createElement('div');
+            div.className = 'cell' + (val === 0 ? ' empty' : '');
+            div.innerText = val === 0 ? '' : val;
+            container.appendChild(div);
+        });
+    }
+
+    async function solvePuzzle() {
+        const initialInput = document.getElementById('inputInitial').value;
+        const initialArr = document.getElementById('inputInitial').value.split(',').map(Number);
+        const btn = document.getElementById('solveBtn');
+        btn.disabled = true;
+        btn.innerText = "Đang giải..."
+
+        if (initialArr.length !== 9 || initialArr.some(isNaN)) {
+            alert("Vui lòng nhập đúng 9 số, cách nhau bởi dấu phẩy!");
+            return;
+        }
+        const goalArr = document.getElementById('inputGoal').value.split(',').map(Number);
+
+        document.getElementById('status').innerText = "Đang tính toán...";
+
+        try {
+            const response = await fetch('/api/puzzle/solve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initial: initialArr, goal: goalArr })
+            });
+
+            const data = await response.json();
+
+            if (data && data.steps) {
+                animate(data.steps); // Gọi hàm diễn hoạt để thay đổi giao diện
+            } else {
+                document.getElementById('status').innerText = "Không tìm thấy lời giải!";
+            }
+        } catch (error) {
+            document.getElementById('status').innerText = "Lỗi kết nối Server!";
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Bắt đầu giải";
+        }
+    }
+
+    function animate(steps) {
+        let i = 0;
+        const timer = setInterval(() => {
+            if (i < steps.length) {
+                render(steps[i]);
+                document.getElementById('status').innerText = `Bước: ${i} / ${steps.length - 1}`;
+                i++;
+            } else {
+                clearInterval(timer);
+                document.getElementById('status').innerText = "Hoàn thành!";
+            }
+        }, 500);
+    }
+
+    function resetPuzzle() {
+        render(currentBoard);
+    }
+
+    render(currentBoard);
+</script>
+</body>
+</html>
