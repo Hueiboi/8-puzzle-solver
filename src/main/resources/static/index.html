@@ -4,29 +4,139 @@
     <meta charset="UTF-8">
     <title>8-Puzzle A* AI Solver</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
-        .grid { display: grid; grid-template-columns: repeat(3, 100px); grid-gap: 10px; margin-top: 20px; }
-        .cell { width: 100px; height: 100px; background: #fff; border: 2px solid #333; display: flex; justify-content: center; align-items: center; font-size: 2em; font-weight: bold; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .empty { background: #cbd5e0; border: none; box-shadow: none; }
-        button { margin-top: 30px; padding: 12px 24px; font-size: 1.1em; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; transition: 0.3s; }
-        button:hover { background: #0056b3; }
-        #status { margin-top: 15px; font-weight: bold; color: #2d3748; }
-        label { font-size: 1.2em;  font-weight: bold; color: #2d3748; }
-        input { font-size: 1.2em;  font-weight: bold; color: green; }
+        :root {
+            --primary-glass: rgba(255, 255, 255, 0.7);
+            --accent-color: #4a90e2;
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --cell-bg: rgba(255, 255, 255, 0.9);
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        h1 { color: #2c3e50; font-weight: 700; margin-bottom: 30px; }
+
+        /* Container cho toàn bộ điều khiển */
+        .glass-panel {
+            background: var(--primary-glass);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .field { display: flex; flex-direction: column; gap: 8px; }
+
+        label { font-size: 14px; font-weight: 600; color: #666; }
+
+        input {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.1);
+            font-family: monospace;
+            font-size: 1.1em;
+            color: #27ae60;
+            background: white;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--accent-color); }
+
+        /* Lưới 8-puzzle */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 12px;
+            margin: 20px 0;
+        }
+
+        .cell {
+            width: 100px; height: 100px;
+            background: var(--cell-bg);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2.2em; font-weight: bold;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            color: #2c3e50;
+            transition: transform 0.2s;
+        }
+
+        .cell:not(.empty):hover { transform: scale(1.05); }
+
+        .empty {
+            background: rgba(0, 0, 0, 0.05);
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Buttons */
+        .button-group { display: flex; gap: 15px; }
+
+        button {
+            padding: 12px 28px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        #solveBtn { background: var(--accent-color); color: white; }
+        #solveBtn:hover { background: #357abd; transform: translateY(-2px); }
+        #solveBtn:disabled { background: #ccc; transform: none; }
+
+        #resetBtn { background: white; color: #666; }
+        #resetBtn:hover { background: #f0f0f0; }
+
+        #status { font-size: 1.1em; color: #444; margin-top: 10px; }
     </style>
 </head>
 <body>
-<h1>8-Puzzle AI Solver (A* algorithm)</h1>
-<div class="grid" id="board"></div>
-<div id="status">Trạng thái: Sẵn sàng</div>
-<div style="margin-bottom: 20px; margin-top: 20px;">
-    <label>Initial: </label>
-    <input type="text" id="inputInitial" value="1, 2, 3, 4, 0, 5, 7, 8, 6" style="width: 200px;">
-    <label>Goal: </label>
-    <input type="text" id="inputGoal" value="1, 2, 3, 4, 0, 5, 6, 7, 8" style="width: 200px;">
+<h1>8-Puzzle AI Solver</h1>
+
+<div class="glass-panel">
+    <div class="input-group">
+        <div class="field">
+            <label>Trạng thái ban đầu (Initial):</label>
+            <input type="text" id="inputInitial" value="1, 2, 3, 4, 0, 5, 7, 8, 6">
+        </div>
+        <div class="field">
+            <label>Đích đến (Goal):</label>
+            <input type="text" id="inputGoal" value="1, 2, 3, 4, 0, 5, 6, 7, 8">
+        </div>
+    </div>
+
+    <div class="grid" id="board"></div>
+
+    <div id="status">Trạng thái: Sẵn sàng</div>
+
+    <div class="button-group">
+        <button id="solveBtn" onclick="solvePuzzle()">Bắt đầu giải</button>
+        <button id="resetBtn" onclick="resetPuzzle()">Reset bảng</button>
+    </div>
 </div>
-<button id="solveBtn" onclick="solvePuzzle()">Bắt đầu giải</button>
-<button id="resetBtn" onclick="ResetPuzzle()">Reset bảng</button>
 
 <script>
     let currentBoard = [1, 2, 3, 4, 0, 5, 7, 8, 6];
