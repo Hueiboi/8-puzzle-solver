@@ -4,7 +4,6 @@ import com.eightpuzzle.demo.dto.PuzzleReq;
 import com.eightpuzzle.demo.dto.PuzzleRes;
 import com.eightpuzzle.demo.model.MyNode;
 import com.eightpuzzle.demo.model.PuzzleSolver;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

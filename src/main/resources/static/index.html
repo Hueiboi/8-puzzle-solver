@@ -142,6 +142,8 @@
     // NOTE: Không gán vào biến toàn cục -> Script vừa load, có thể các phần tử HTML chưa sẵn sàng hoặc người dùng chưa kịp sửa gì cả.
     const initBoard = getBoard("inputInitial");
     let timer;
+    let isSolving = false;
+
     function getBoard(inputId) {
         const el = document.getElementById(inputId);
         if (!el) return [];
@@ -161,21 +163,30 @@
         });
     }
 
-    let isSolving = false; // NOTE: chặn spam solveBtn liên tục
+    function lockBoard() {
+        isSolving = true;
+        const solveBtn = document.getElementById('solveBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        solveBtn.disabled = true;
+        resetBtn.disabled = true;
+        solveBtn.innerText = "Đang giải";
+    }
+
+    function unlockBoard() {
+        isSolving = false;
+        const solveBtn = document.getElementById('solveBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        solveBtn.disabled = false;
+        resetBtn.disabled = false;
+        solveBtn.innerText = "Bắt đầu giải";
+    }
+
     async function solvePuzzle() {
-        // 1. CHẶN ĐỨNG NGAY LẬP TỨC nếu đang bận
         if (isSolving) return;
 
         const initialArr = getBoard('inputInitial');
         const goalArr = getBoard('inputGoal');
-        const btn = document.getElementById('solveBtn');
-        const resetBtn = document.getElementById('resetBtn');
-
-        // 2. BẬT CẦU CHÌ
-        isSolving = true;
-        btn.disabled = true;
-        resetBtn.disabled = true;
-        btn.innerText = "Đang giải...";
+        lockBoard();
 
         try {
             const response = await fetch('/api/puzzle/solve', {
@@ -184,34 +195,34 @@
                 body: JSON.stringify({ initial: initialArr, goal: goalArr })
             });
 
+            if (!response.ok) {
+                // Đọc nội dung từ body của ResponseEntity.badRequest()
+                const errorMsg = await response.text();
+                alert("Thông báo hệ thống: " + errorMsg);
+                unlockBoard();
+                return;
+            }
+
             const data = await response.json();
 
             if (data && data.steps) {
                 animate(data.steps); // Hàm animate sẽ tắt isSolving khi xong
             } else {
                 alert("Không tìm thấy lời giải!");
-                // Nếu lỗi thì phải nhả cầu chì ra cho người ta bấm lại
-                isSolving = false;
-                btn.disabled = false;
-                resetBtn.disabled = false;
-                btn.innerText = "Bắt đầu giải";
+                unlockBoard();
             }
         } catch (error) {
-            alert("Lỗi kết nối!");
-            isSolving = false;
-            btn.disabled = false;
-            resetBtn.disabled = false;
-            btn.innerText = "Bắt đầu giải";
+            console.error("Fetch Error:", error);
+            alert("Không thể kết nối tới máy chủ. Vui lòng kiểm tra lại đường truyền!");
+            unlockBoard();
         }
     }
 
     function animate(steps) {
-        const solveBtn = document.getElementById('solveBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        solveBtn.disabled = true;
-        resetBtn.disabled = true;
-
         let i = 0;
+
+        if(timer) clearInterval(timer);
+
         timer = setInterval(() => {
             if (i < steps.length) {
                 render(steps[i]);
@@ -222,24 +233,16 @@
                 // để tránh hiện tượng chồng lấp (overlapping) khiến các ô nhảy số loạn xạ.
                 clearInterval(timer);
                 document.getElementById('status').innerText = "Hoàn thành!";
-                solveBtn.disabled = false;
-                resetBtn.disabled = false;
+                unlockBoard();
             }
         }, 500);
     }
 
     function resetPuzzle() {
-        const solveBtn = document.getElementById('solveBtn');
-        const resetBtn = document.getElementById('resetBtn');
-
-        clearInterval(timer); // Dừng mọi animation đang chạy
-
-        // Mở khóa lại nút trong trường hợp người dùng muốn reset giữa chừng
-        solveBtn.disabled = false;
-        resetBtn.disabled = false;
-
+        if(timer) clearInterval(timer); // Dừng mọi animation đang chạy
         render(getBoard("inputInitial"));
         document.getElementById('status').innerText = "Trạng thái: Đã reset";
+        unlockBoard();
     }
 
     window.onload = () => {
