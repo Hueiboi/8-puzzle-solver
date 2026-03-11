@@ -3,62 +3,82 @@ package com.eightpuzzle.demo.model;
 import java.util.Arrays;
 
 public class MyNode implements Comparable<MyNode> {
-    public int[] board;
-    int f,g,h;
-    int zeroPos;
-    MyNode parent; // Lưu lại bước đi trước
+    public int[][] board;
+    int f, g, h;
+    int zeroRow, zeroCol; // Updated to 2D coordinates
+    MyNode parent;
+    private int dimension; // Added dimension
 
-    public MyNode(int[] board, int[] goal, int g, MyNode parent) {
-        this.board = board.clone();
+    public MyNode(int[][] board, int[][] goal, int g, MyNode parent, int dimension) {
+        this.dimension = dimension;
+        this.board = copy(board); // Deep copy
         this.g = g;
         this.parent = parent;
 
-        // Vị trí = 0 sẽ là ô trống
-        for(int i = 0; i < 9; i++) {
-            if(board[i] == 0) {
-                this.zeroPos = i;
-                break;
+        // Find the empty tile (0) position
+        for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
+                if (board[i][j] == 0) {
+                    this.zeroRow = i;
+                    this.zeroCol = j;
+                    break;
+                }
             }
         }
 
-        // Manhattan distance (tổng của hiệu vị trí hiện tại và vị trí đích)
-        // Nếu vị trí đích cố định, có thể sử dụng lookup table
+        // Manhattan distance heuristic
         this.h = 0;
-        for(int i = 0; i < 9; i++) {
-            int value = this.board[i];
-            if(value != 0) {
-                int targetIdx = findIndex(goal, value);
-
-                int currX = i / 3, currY = i % 3;
-                int targetX = targetIdx / 3, targetY = targetIdx % 3;
-                this.h += Math.abs(currX - targetX) + Math.abs(currY - targetY);
+        for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
+                int value = this.board[i][j];
+                if (value != 0) {
+                    int[] targetPos = findPosition(goal, value); // Returns {row, col}
+                    if (targetPos != null) {
+                        int targetX = targetPos[0];
+                        int targetY = targetPos[1];
+                        this.h += Math.abs(i - targetX) + Math.abs(j - targetY);
+                    }
+                }
             }
-
         }
         this.f = this.h + this.g;
     }
 
-    private int findIndex(int[] goal, int value) {
-        for(int i = 0; i < 9; i++) {
-            if(goal[i] == value) return i;
+    private int[] findPosition(int[][] goal, int value) {
+        for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
+                if (goal[i][j] == value) {
+                    return new int[]{i, j};
+                }
+            }
         }
-        return -1;
+        return null; // Should not happen in a valid puzzle
     }
 
-    // So sánh để chọn f nhỏ nhất
     @Override
     public int compareTo(MyNode other) {
         return Integer.compare(this.f, other.f);
     }
 
-    // So sánh trạng thái board
     @Override
     public boolean equals(Object other) {
-        return Arrays.equals(this.board, ((MyNode)other).board);
+        if (this == other) return true;
+        if (other == null || getClass() != other.getClass()) return false;
+        MyNode myNode = (MyNode) other;
+        return Arrays.deepEquals(board, myNode.board); // Use deepEquals for 2D array
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(this.board);
+        return Arrays.deepHashCode(board); // Use deepHashCode for 2D array
+    }
+
+    // Helper method to create a deep copy of the puzzle state
+    private int[][] copy(int[][] state) {
+        int[][] newGrid = new int[dimension][dimension];
+        for (int i = 0; i < dimension; i++) {
+            System.arraycopy(state[i], 0, newGrid[i], 0, dimension);
+        }
+        return newGrid;
     }
 }

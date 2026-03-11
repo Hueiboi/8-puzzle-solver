@@ -2,53 +2,37 @@ package com.eightpuzzle.demo.controller;
 
 import com.eightpuzzle.demo.dto.PuzzleReq;
 import com.eightpuzzle.demo.dto.PuzzleRes;
-import com.eightpuzzle.demo.model.MyNode;
+import com.eightpuzzle.demo.model.EightPuzzle;
+import com.eightpuzzle.demo.model.FifteenPuzzle;
+import com.eightpuzzle.demo.model.Puzzle;
 import com.eightpuzzle.demo.model.PuzzleSolver;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/puzzle")
-
+@CrossOrigin(origins = "*")
 public class PuzzleController {
+
     @PostMapping("/solve")
-    public ResponseEntity<?> solve(@RequestBody PuzzleReq req) {
-        if(req.initial() == null || req.goal() == null) {
-            return ResponseEntity.badRequest().body("Dữ liệu không được để trống");
-        }
-
-        if (req.initial().length != 9 || req.goal().length != 9) {
-            return ResponseEntity.badRequest().body("Mảng phải có đúng 9 phần tử!");
-        }
-
-        if (!isValidPuzzle(req.initial())) {
-            return ResponseEntity.badRequest().body("Dữ liệu phải từ 0-8");
+    public PuzzleRes solve(@RequestBody PuzzleReq req) {
+        Puzzle puzzle;
+        
+        if ("15".equals(req.puzzleType())) {
+            puzzle = new FifteenPuzzle(req.initial());
+        } else {
+            // Mặc định là 8 puzzle
+            puzzle = new EightPuzzle(req.initial());
         }
 
         PuzzleSolver solver = new PuzzleSolver();
+        List<int[][]> solution = solver.solve(puzzle);
 
-        List<MyNode> path = solver.solve(req.initial(), req.goal());
-
-        if(path == null) return null;
-
-        List<int[]> steps = path.stream().map(node -> node.board).toList();
-        return ResponseEntity.ok(new PuzzleRes(steps, steps.size() - 1));
-    }
-
-    private boolean isValidPuzzle(int[] board) {
-        if (board.length != 9) return false;
-        boolean[] seen = new boolean[9]; 
-        for (int val : board) {
-            if (val < 0 || val > 8 || seen[val]) {
-                return false;
-            }
-            seen[val] = true;
+        if (solution != null) {
+            return new PuzzleRes(solution, solution.size() - 1);
+        } else {
+            return new PuzzleRes(null, 0);
         }
-        return true;
     }
 }
